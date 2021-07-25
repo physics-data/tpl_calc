@@ -6,6 +6,59 @@ use std::ops::Deref;
 use std::path::PathBuf;
 use std::fs::File;
 use std::io::Write;
+use std::str::FromStr;
+
+#[derive(Debug)]
+struct OpCfg {
+    ops: Vec<(char, f64)>,
+}
+
+impl FromStr for OpCfg {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut tot: f64 = 0f64;
+
+        let mut collected = Vec::new();
+
+        for op in s.split(",") {
+            let mut config = op.split(" ");
+
+            let first = config.next().ok_or_else(|| anyhow::anyhow!("Empty segment"))?;
+            let second = config.next().unwrap_or("1");
+            let parsed: f64 = second.parse()?;
+
+            tot += parsed;
+
+            collected.push((first.chars().next().unwrap(), parsed));
+        }
+
+        for e in collected.iter_mut() {
+            e.1 /= tot;
+        }
+
+        Ok(
+            OpCfg {
+                ops: collected
+            }
+        )
+    }
+}
+
+impl OpCfg {
+    pub fn pick<R: Rng>(&self, rng: &mut R) -> char {
+        let mut target = rng.gen_range(0f64..1f64);
+        for &(op, ratio) in self.ops.iter() {
+            if target < ratio {
+                return op
+            } else {
+                target -= ratio;
+            }
+        }
+
+        unreachable!()
+    }
+}
 
 #[derive(StructOpt, Debug)]
 struct Args {
@@ -18,8 +71,8 @@ struct Args {
     opcnt: usize,
 
     /// Enabled binary operations
-    #[structopt(long, default_value="+-*/")]
-    ops: String,
+    #[structopt(long, default_value="+ 4,- 4,* 1.5,/ 0.5")]
+    ops: OpCfg,
 
     /// Probability of newline after each token
     #[structopt(long, short, default_value="1")]
@@ -32,6 +85,10 @@ struct Args {
     /// Std result path
     #[structopt(long, short, default_value="./std.txt")]
     std: PathBuf,
+
+    /// Allow the evalulated value to be 0
+    #[structopt(long, short)]
+    allow_zero: bool,
 }
 
 enum ExprNode {
@@ -44,10 +101,10 @@ enum ExprNode {
 }
 
 impl ExprNode {
-    fn grow<R: Rng>(&mut self, rng: &mut R, ops: &[char]) -> (Rc<RefCell<ExprNode>>, Rc<RefCell<ExprNode>>) {
+    fn grow<R: Rng>(&mut self, rng: &mut R, ops: &OpCfg) -> (Rc<RefCell<ExprNode>>, Rc<RefCell<ExprNode>>) {
         if let &mut ExprNode::Number(orig) = self {
             let rhs: u8 = rng.gen();
-            let op = ops[rng.gen_range(0..ops.len())];
+            let op = ops.pick(rng);
 
             let rhs = Rc::new(RefCell::new(ExprNode::Number(rhs)));
             let lhs = Rc::new(RefCell::new(ExprNode::Number(orig)));
@@ -84,14 +141,13 @@ impl ExprNode {
 
 #[paw::main]
 fn main(args: Args) -> anyhow::Result<()> {
-    let opvec: Vec<_> = args.ops.chars().collect();
     let mut rng = thread_rng();
 
     let mut flattened = String::new();
     let mut results = Vec::new();
 
     for _ in 0..args.grpcnt {
-        let (expr, val) = guarded_gen_expr(&mut rng, &args, opvec.as_slice());
+        let (expr, val) = guarded_gen_expr(&mut rng, &args);
         expr.borrow().flatten(&mut rng, args.nlprob, &mut flattened);
         results.push(val);
     }
@@ -107,7 +163,7 @@ fn main(args: Args) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn gen_expr<R: Rng>(rng: &mut R, args: &Args, ops: &[char]) -> Rc<RefCell<ExprNode>> {
+fn gen_expr<R: Rng>(rng: &mut R, args: &Args) -> Rc<RefCell<ExprNode>> {
     let orig: u8 = rng.gen();
     let root = Rc::new(RefCell::new(ExprNode::Number(orig)));
 
@@ -120,7 +176,7 @@ fn gen_expr<R: Rng>(rng: &mut R, args: &Args, ops: &[char]) -> Rc<RefCell<ExprNo
         let picked = leaves.swap_remove(sel);
 
         let mut borrow = picked.borrow_mut();
-        let (lhs, rhs) = borrow.grow(rng, ops);
+        let (lhs, rhs) = borrow.grow(rng, &args.ops);
 
         leaves.push(lhs);
         leaves.push(rhs);
@@ -147,10 +203,13 @@ fn eval(expr: &Rc<RefCell<ExprNode>>) -> Option<u32> {
     }
 }
 
-fn guarded_gen_expr<R: Rng>(rng: &mut R, args: &Args, ops: &[char]) -> (Rc<RefCell<ExprNode>>, u32) {
+fn guarded_gen_expr<R: Rng>(rng: &mut R, args: &Args) -> (Rc<RefCell<ExprNode>>, u32) {
     loop {
-        let cur = gen_expr(rng, args, ops);
+        let cur = gen_expr(rng, args);
         if let Some(result) = eval(&cur) {
+            if result == 0 && !args.allow_zero {
+                continue;
+            }
             break (cur, result)
         }
     }
