@@ -185,9 +185,9 @@ fn gen_expr<R: Rng>(rng: &mut R, args: &Args) -> Rc<RefCell<ExprNode>> {
     root
 }
 
-fn eval(expr: &Rc<RefCell<ExprNode>>) -> Option<u32> {
+fn eval(expr: &Rc<RefCell<ExprNode>>) -> Option<i32> {
     match expr.borrow().deref() {
-        &ExprNode::Number(n) => Some(n as u32),
+        &ExprNode::Number(n) => Some(n as i32),
         &ExprNode::Expr(op, ref l, ref r) => {
             let ln = eval(l)?;
             let rn = eval(r)?;
@@ -203,7 +203,7 @@ fn eval(expr: &Rc<RefCell<ExprNode>>) -> Option<u32> {
     }
 }
 
-fn guarded_gen_expr<R: Rng>(rng: &mut R, args: &Args) -> (Rc<RefCell<ExprNode>>, u32) {
+fn guarded_gen_expr<R: Rng>(rng: &mut R, args: &Args) -> (Rc<RefCell<ExprNode>>, i32) {
     loop {
         let cur = gen_expr(rng, args);
         if let Some(result) = eval(&cur) {
@@ -211,6 +211,8 @@ fn guarded_gen_expr<R: Rng>(rng: &mut R, args: &Args) -> (Rc<RefCell<ExprNode>>,
                 continue;
             }
             break (cur, result)
+        } else {
+            println!("Retry: overflowed");
         }
     }
 }
