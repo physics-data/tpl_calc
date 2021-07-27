@@ -23,7 +23,7 @@ function task() {
 
     ./calc.sh < $INPUT | diff - $ANS
 
-    if [[ -n $? ]]; then
+    if [[ $? != 0 ]]; then
       echo "Failed on case $i"
       mkdir -p ./failed
       cp $INPUT ./failed/input

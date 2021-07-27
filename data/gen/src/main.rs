@@ -89,6 +89,10 @@ struct Args {
     /// Allow the evalulated value to be 0
     #[structopt(long, short)]
     allow_zero: bool,
+
+    /// Verbose mode
+    #[structopt(long, short)]
+    verbose: bool,
 }
 
 enum ExprNode {
@@ -212,7 +216,9 @@ fn guarded_gen_expr<R: Rng>(rng: &mut R, args: &Args) -> (Rc<RefCell<ExprNode>>,
             }
             break (cur, result)
         } else {
-            println!("Retry: overflowed");
+            if args.verbose {
+                println!("Retry: overflowed");
+            }
         }
     }
 }
