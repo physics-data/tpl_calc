@@ -1,0 +1,29 @@
+name: Automated judger
+on: [push]
+
+jobs:
+  execute:
+    runs-on: [self-hosted]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Check file existence
+        run: test -f ./calc.sh
+      - name: Install rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - name: Run judger
+        run: ./scripts/judge.sh
+      - name: Upload failed case
+        if: always()
+        uses: actions/upload-artifact@v2
+        with:
+          name: failed
+          path: ./failed
+      - name: Upload verdict
+        if: always()
+        uses: actions/upload-artifact@v2
+        with:
+          name: judge
+          path: ./judge
