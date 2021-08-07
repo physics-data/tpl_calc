@@ -1,4 +1,4 @@
-# [Calc.](https://www.nicovideo.jp/watch/sm12050471)
+# [Calc](https://www.nicovideo.jp/watch/sm12050471)
 
 ## 问题背景
 

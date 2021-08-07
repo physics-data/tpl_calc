@@ -1,6 +1,5 @@
-DN=$(dirname $(readlink -f $0))
-cd $DN
-cd ..
+DN="$(dirname $(readlink -f $0))"
+cd "$DN"
 
 echo "Running in directory: $(pwd)"
 
