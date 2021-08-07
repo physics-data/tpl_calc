@@ -21,7 +21,7 @@ function task() {
   for i in $(seq 1 20); do
     gen
 
-    ./calc.sh < $INPUT | diff - $ANS
+    bash ./calc.sh < $INPUT | diff - $ANS
 
     if [[ $? != 0 ]]; then
       echo "Failed on case $i"
