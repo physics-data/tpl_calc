@@ -1,5 +1,8 @@
-DN="$(dirname $(readlink -f $0))"
-cd "$DN"
+#!/bin/bash
+
+SCRIPT_PATH=$(readlink -f "${BASH_SOURCE[0]}")
+DN="$(dirname "$SCRIPT_PATH")"
+cd "${DN}/../"
 
 echo "Running in directory: $(pwd)"
 
