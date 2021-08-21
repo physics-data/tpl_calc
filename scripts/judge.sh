@@ -4,6 +4,13 @@ INPUT=$(mktemp)
 ANS=$(mktemp)
 TASK=1
 
+function build_gen() {
+  echo "Building data generator..."
+  cd ./data/gen
+  cargo build --release
+  cd ../..
+}
+
 function gen() {
   cd ./data/gen
   if [[ $TASK = "1" ]]; then
@@ -39,6 +46,7 @@ function task() {
   echo "PASS"
 }
 
+build_gen
 task
 TASK=2
 task

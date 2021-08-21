@@ -13,8 +13,8 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
-      - name: Run judger
-        run: ./scripts/judge.sh
+      - name: Run judger + grader
+        run: ./scripts/grade.sh
       - name: Upload failed case
         if: always()
         uses: actions/upload-artifact@v2
